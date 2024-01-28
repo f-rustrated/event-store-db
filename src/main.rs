@@ -16,6 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let input = read_user_input("Enter a command: ");
 
         match input.as_str() {
+            "create_stream" => event_store_commands::create_stream(&client, read_user_input("Text: ")).await?,
             "add_to_stream" => event_store_commands::add_to_stream(&client, read_user_input("Text: ")).await?,
             "read_from_stream" => event_store_commands::read_from_stream(&client).await?,
             "read_from_stream_position" => event_store_commands::read_from_stream_position(&client, read_user_input("Position: ")).await?,

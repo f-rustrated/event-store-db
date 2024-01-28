@@ -5,10 +5,7 @@
 
 use std::error::Error;
 
-use eventstore::{
-    Client, Credentials, EventData, ExpectedRevision, Position, ReadAllOptions, ReadStreamOptions,
-    StreamPosition,
-};
+use eventstore::{AppendToStreamOptions, Client, Credentials, EventData, ExpectedRevision, Position, ReadAllOptions, ReadStreamOptions, StreamPosition};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -19,8 +16,27 @@ struct TestEvent {
 }
 
 type Result<A> = std::result::Result<A, Box<dyn Error>>;
-static STREAM_NAME: &str = "user-custom-stream-name";
-static EVENT_TYPE: &str = "user-custom-event-type";
+
+static STREAM_NAME: &str = "user-custom-stream-name-test";
+static EVENT_TYPE: &str = "user-custom-event-type-test";
+
+
+pub async fn create_stream(client: &Client, text: String) -> Result<()> {
+    let payload = TestEvent {
+        id: Uuid::new_v4().to_string(),
+        text,
+    };
+
+    let event = EventData::json(EVENT_TYPE, payload)?;
+    client
+        .append_to_stream(STREAM_NAME,
+                          &AppendToStreamOptions::default()
+                              .expected_revision(ExpectedRevision::Any),
+                          event)
+        .await?;
+
+    Ok(())
+}
 
 pub async fn add_to_stream(client: &Client, text: String) -> Result<()> {
     let payload = TestEvent {
@@ -30,7 +46,10 @@ pub async fn add_to_stream(client: &Client, text: String) -> Result<()> {
 
     let event = EventData::json(EVENT_TYPE, payload)?;
     client
-        .append_to_stream(STREAM_NAME, &Default::default(), event)
+        .append_to_stream(STREAM_NAME,
+                          &AppendToStreamOptions::default()
+                              .expected_revision(ExpectedRevision::StreamExists),
+                          event)
         .await?;
 
     Ok(())
@@ -46,6 +65,9 @@ pub async fn read_from_stream(client: &Client) -> Result<()> {
 
     // region iterate-stream
     while let Some(event) = stream.next().await? {
+        let hello = &event.get_original_event().event_type;
+        println!("Event> {:?}", hello);
+
         let test_event = event.get_original_event().as_json::<TestEvent>()?;
 
         println!("Event> {:?}", test_event);
